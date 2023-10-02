@@ -89,7 +89,7 @@ class PwCalculationTools(CalculationTools):
                 ztol=ztol,
                 metadata={'store_provenance': False},
             )
-            structure = results['results']
+            structure = results['structure']
 
         return AttributeDict({
             'structure': structure,

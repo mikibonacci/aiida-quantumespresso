@@ -17,7 +17,11 @@ from qe_tools.converters import get_parameters_from_cell
 
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.utils.convert import convert_input_to_namelist_entry
-from aiida_quantumespresso.utils.hubbard import HubbardUtils
+from aiida_quantumespresso.utils.hubbard import HubbardUtils as LegacyHubbardUtils
+
+from aiida.orm import StructureData as LegacyStructureData
+from aiida_atomistic.data.structure.hubbard_qe_utils import HubbardUtils
+from aiida_atomistic.data.structure.magnetic_qe_utils import MagneticUtils
 
 from .base import CalcJob
 from .helpers import QEInputValidationError
@@ -25,6 +29,7 @@ from .helpers import QEInputValidationError
 LegacyUpfData = DataFactory('core.upf')
 UpfData = DataFactory('pseudo.upf')
 
+StructureData = DataFactory("atomistic.structure")
 
 class BasePwCpInputGenerator(CalcJob):
     """Base `CalcJob` for implementations for pw.x and cp.x of Quantum ESPRESSO."""
@@ -116,7 +121,9 @@ class BasePwCpInputGenerator(CalcJob):
         spec.input('metadata.options.input_filename', valid_type=str, default=cls._DEFAULT_INPUT_FILE)
         spec.input('metadata.options.output_filename', valid_type=str, default=cls._DEFAULT_OUTPUT_FILE)
         spec.input('metadata.options.withmpi', valid_type=bool, default=True)  # Override default withmpi=False
-        spec.input('structure', valid_type=orm.StructureData,
+        #spec.input('structure', valid_type=orm.StructureData,
+        #    help='The input structure.')
+        spec.input('structure', valid_type=(LegacyStructureData,StructureData),
             help='The input structure.')
         spec.input('parameters', valid_type=orm.Dict,
             help='The input parameters that are to be used to construct the input file.')
@@ -702,10 +709,27 @@ class BasePwCpInputGenerator(CalcJob):
             kpoints_card = ''.join(kpoints_card_list)
             del kpoints_card_list
 
-        # HUBBARD CARD
-        hubbard_card = HubbardUtils(structure).get_hubbard_card() if isinstance(structure, HubbardStructureData) \
-            else None
-
+        """Note on property cards:
+        here should start a check on the properties defined in the new StructureData,
+        so that if some of the structure.get_defined_properties() is not supported in 
+        this plugin, an exception occurs.
+        """
+        
+        # HUBBARD CARD: now always present, if not set you just have an empty list for the params.
+        hubbard_card = None
+        if isinstance(structure, HubbardStructureData):
+            hubbard_card = LegacyHubbardUtils(structure).get_hubbard_card()
+        elif isinstance(structure, StructureData):
+            if  "hubbard" in structure.get_defined_properties():
+                hubbard_card = HubbardUtils(structure).get_hubbard_card()
+            
+        # MAGNETIC CARDS:
+        magnetic_card = None
+        if isinstance(structure, StructureData):
+            if  "magnetization" in structure.get_defined_properties():
+                magnetic_card = MagneticUtils(structure).get_magnetic_card()
+                input_params['SYSTEM']['starting_magnetization'] = magnetic_card
+                input_params['SYSTEM']['nspin'] = 2
         # =================== NAMELISTS AND CARDS ========================
         try:
             namelists_toprint = settings.pop('NAMELISTS')

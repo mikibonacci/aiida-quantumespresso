@@ -2,7 +2,11 @@
 """A basic parser for the common format of QE."""
 import re
 
-from aiida.orm import StructureData
+from aiida.plugins import DataFactory
+from aiida.orm import StructureData as LegacyStructureData
+
+StructureData = DataFactory("atomistic.structure")
+
 
 __all__ = ('convert_qe_time_to_sec', 'convert_qe_to_aiida_structure', 'convert_qe_to_kpoints')
 
@@ -59,6 +63,9 @@ def convert_qe_to_aiida_structure(output_dict, input_structure=None):
         structure.reset_cell(cell_dict['lattice_vectors'])
         new_pos = [i[1] for i in cell_dict['atoms']]
         structure.reset_sites_positions(new_pos)
+
+    # use the pw tool to create the new structure with the output magnetization, if any.
+    
 
     return structure
 
