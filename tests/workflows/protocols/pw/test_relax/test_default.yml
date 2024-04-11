@@ -1,6 +1,7 @@
 base:
   kpoints_distance: 0.15
   kpoints_force_parity: false
+  max_iterations: 5
   pw:
     code: test.quantumespresso.pw@localhost
     metadata:
@@ -8,6 +9,7 @@ base:
         max_wallclock_seconds: 43200
         resources:
           num_machines: 1
+          num_mpiprocs_per_machine: 1
         withmpi: true
     parameters:
       CELL:
@@ -35,6 +37,7 @@ base:
 base_final_scf:
   kpoints_distance: 0.15
   kpoints_force_parity: false
+  max_iterations: 5
   pw:
     code: test.quantumespresso.pw@localhost
     metadata:
@@ -42,6 +45,7 @@ base_final_scf:
         max_wallclock_seconds: 43200
         resources:
           num_machines: 1
+          num_mpiprocs_per_machine: 1
         withmpi: true
     parameters:
       CONTROL:

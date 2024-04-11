@@ -14,9 +14,10 @@
 import pathlib
 import time
 
-from aiida.manage.configuration import load_documentation_profile
+from aiida.manage.configuration import Profile, load_profile
 
-load_documentation_profile()
+load_profile(Profile('docs', {'process_control': {}, 'storage': {}}))
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -118,6 +119,7 @@ html_theme_options = {
     'github_url': 'https://github.com/aiidateam/aiida-quantumespresso',
     'twitter_url': 'https://twitter.com/aiidateam',
     'use_edit_page_button': True,
+    'navigation_with_keys': False,
     'logo': {
         'text': 'AiiDA Quantum ESPRESSO',
         'image_light': '_static/logo_aiida_quantumespresso-light.png',

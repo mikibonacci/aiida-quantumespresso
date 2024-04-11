@@ -182,7 +182,14 @@ class PwCalculation(BasePwCpInputGenerator):
         the ``parent_folder`` input at a later step in the outline. To avoid raising any warnings, such a work chain
         must exclude the ``parent_folder`` port when exposing the inputs of the ``PwCalculation``.
         """
+        from aiida.engine.processes.calcjobs.calcjob import validate_calc_job
+
         result = super().validate_inputs(value, port_namespace)
+
+        if result is not None:
+            return result
+
+        result = validate_calc_job(value, port_namespace)
 
         if result is not None:
             return result
@@ -206,7 +213,7 @@ class PwCalculation(BasePwCpInputGenerator):
                     'Please set one of the following in the input parameters:\n'
                     "    parameters['CONTROL']['restart_mode'] = 'restart'\n"
                     "    parameters['ELECTRONS']['startingpot'] = 'file'\n"
-                    "    parameters['ELECTRONS']['startingwfc'] = 'file'\n"
+                    "    parameters['ELECTRONS']['startingwfc'] = 'file'\n", UserWarning
                 )
 
         if calculation_type in ('nscf', 'bands'):
@@ -214,7 +221,7 @@ class PwCalculation(BasePwCpInputGenerator):
                 warnings.warn(
                     f'`parent_folder` not provided for `{calculation_type}` calculation. For work chains wrapping this '
                     'calculation, you can disable this warning by excluding the `parent_folder` when exposing the '
-                    'inputs of the `PwCalculation`.'
+                    'inputs of the `PwCalculation`.', UserWarning
                 )
 
     @classproperty
