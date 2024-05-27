@@ -7,6 +7,10 @@ from aiida import orm
 from aiida.common.lang import classproperty
 from aiida.plugins import factories
 
+from aiida.plugins import DataFactory
+StructureData = DataFactory("atomistic.structure")
+from aiida.orm import StructureData as LegacyStructureData
+
 from aiida_quantumespresso.calculations import BasePwCpInputGenerator
 
 
@@ -80,7 +84,7 @@ class PwCalculation(BasePwCpInputGenerator):
         spec.output('output_trajectory', valid_type=orm.TrajectoryData, required=False)
         spec.output('output_band', valid_type=orm.BandsData, required=False,
             help='The `output_band` output node of the successful calculation if present.')
-        spec.output('output_kpoints', valid_type=orm.KpointsData, required=False)
+        spec.output('output_kpoints', valid_type=(LegacyStructureData,StructureData), required=False)
         spec.output('output_atomic_occupations', valid_type=orm.Dict, required=False)
         spec.default_output_node = 'output_parameters'
 

@@ -8,6 +8,7 @@ from types import MappingProxyType
 import warnings
 
 from aiida import orm
+from aiida.orm import StructureData as LegacyStructureData
 from aiida.common import AttributeDict, datastructures, exceptions
 from aiida.common.lang import classproperty
 from aiida.common.warnings import AiidaDeprecationWarning
@@ -24,7 +25,7 @@ from .helpers import QEInputValidationError
 
 LegacyUpfData = DataFactory('core.upf')
 UpfData = DataFactory('pseudo.upf')
-
+StructureData = DataFactory("atomistic.structure")
 
 class BasePwCpInputGenerator(CalcJob):
     """Base `CalcJob` for implementations for pw.x and cp.x of Quantum ESPRESSO."""
@@ -116,7 +117,7 @@ class BasePwCpInputGenerator(CalcJob):
         spec.input('metadata.options.input_filename', valid_type=str, default=cls._DEFAULT_INPUT_FILE)
         spec.input('metadata.options.output_filename', valid_type=str, default=cls._DEFAULT_OUTPUT_FILE)
         spec.input('metadata.options.withmpi', valid_type=bool, default=True)  # Override default withmpi=False
-        spec.input('structure', valid_type=orm.StructureData,
+        spec.input('structure', valid_type=(LegacyStructureData,StructureData),
             help='The input structure.')
         spec.input('parameters', valid_type=orm.Dict,
             help='The input parameters that are to be used to construct the input file.')

@@ -2,7 +2,10 @@
 """A basic parser for the common format of QE."""
 import re
 
-from aiida.orm import StructureData
+from aiida.plugins import DataFactory
+from aiida.orm import StructureData as LegacyStructureData
+
+StructureData = DataFactory("atomistic.structure")
 
 __all__ = ('convert_qe_time_to_sec', 'convert_qe_to_aiida_structure', 'convert_qe_to_kpoints')
 
