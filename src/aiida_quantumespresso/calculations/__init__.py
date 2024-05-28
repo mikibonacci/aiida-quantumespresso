@@ -23,6 +23,8 @@ from aiida_quantumespresso.utils.hubbard import HubbardUtils
 from .base import CalcJob
 from .helpers import QEInputValidationError
 
+from aiida_atomistic.data.structure.utils import get_kinds
+
 LegacyUpfData = DataFactory('core.upf')
 UpfData = DataFactory('pseudo.upf')
 StructureData = DataFactory("atomistic.structure")
@@ -493,14 +495,18 @@ class BasePwCpInputGenerator(CalcJob):
         # I keep track of the order of species
         kind_names = []
         # I add the pseudopotential files to the list of files to be copied
-        for kind in structure.kinds:
+        kinds = get_kinds(structure)
+        for kind,symbol,mass in zip(kinds['kinds'], kinds['symbols'], kinds['mass']):
+            if kind in kind_names: 
+                continue
             # This should not give errors, I already checked before that
             # the list of keys of pseudos and kinds coincides
-            pseudo = pseudos[kind.name]
-            if kind.is_alloy or kind.has_vacancies:
-                raise exceptions.InputValidationError(
-                    f"Kind '{kind.name}' is an alloy or has vacancies. This is not allowed for pw.x input structures."
-                )
+            pseudo = pseudos[symbol]
+            # TOBE understood: maybe maps wrt sites and define is_alloy = site. ... 
+            #if kind.is_alloy or kind.has_vacancies:
+            #    raise exceptions.InputValidationError(
+            #        f"Kind '{kind.name}' is an alloy or has vacancies. This is not allowed for pw.x input structures."
+            #    )
 
             try:
                 # If it is the same pseudopotential file, use the same filename
@@ -513,8 +519,8 @@ class BasePwCpInputGenerator(CalcJob):
                     (pseudo.uuid, pseudo.filename, os.path.join(cls._PSEUDO_SUBFOLDER, filename))
                 )
 
-            kind_names.append(kind.name)
-            atomic_species_card_list.append(f'{kind.name.ljust(6)} {kind.mass} {filename}\n')
+            kind_names.append(kind)
+            atomic_species_card_list.append(f'{kind.ljust(6)} {mass} {filename}\n')
 
         # I join the lines, but I resort them using the alphabetical order of
         # species, given by the kind_names list. I also store the mapping_species
@@ -540,8 +546,8 @@ class BasePwCpInputGenerator(CalcJob):
             atomic_positions_card_header = 'ATOMIC_POSITIONS angstrom\n'
 
         atomic_positions_card_list = [
-            '{0} {1:18.10f} {2:18.10f} {3:18.10f}'.format(site.kind_name.ljust(6), *site_coords)  # pylint: disable=consider-using-f-string
-            for site, site_coords in zip(structure.sites, coordinates)
+            '{0} {1:18.10f} {2:18.10f} {3:18.10f}'.format(kind.ljust(6), *site_coords)  # pylint: disable=consider-using-f-string
+            for kind, site_coords in zip(kinds['kinds'], coordinates)
         ]
 
         fixed_coords = settings.pop('FIXED_COORDS', None)

@@ -389,7 +389,7 @@ class PwParser(BaseParser):
             parsed_data['structure']['cell']['lattice_vectors'] = structure.cell
 
         if 'atoms' not in parsed_data['structure']['cell']:
-            symbols = {s.kind_name: structure.get_kind(s.kind_name).symbol for s in structure.sites}
+            symbols = {s.kind_name: s.symbol for s in structure.sites}
             parsed_data['structure']['cell']['atoms'] = [(symbols[s.kind_name], s.position) for s in structure.sites]
 
         return parsed_data, logs
