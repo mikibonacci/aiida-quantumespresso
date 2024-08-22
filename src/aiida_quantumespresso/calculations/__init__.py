@@ -23,8 +23,6 @@ from aiida_quantumespresso.utils.hubbard import HubbardUtils
 from .base import CalcJob
 from .helpers import QEInputValidationError
 
-from aiida_atomistic.data.structure.utils import get_kinds
-
 LegacyUpfData = DataFactory('core.upf')
 UpfData = DataFactory('pseudo.upf')
 StructureData = DataFactory("atomistic.structure")
@@ -119,7 +117,7 @@ class BasePwCpInputGenerator(CalcJob):
         spec.input('metadata.options.input_filename', valid_type=str, default=cls._DEFAULT_INPUT_FILE)
         spec.input('metadata.options.output_filename', valid_type=str, default=cls._DEFAULT_OUTPUT_FILE)
         spec.input('metadata.options.withmpi', valid_type=bool, default=True)  # Override default withmpi=False
-        spec.input('structure', valid_type=(LegacyStructureData,StructureData),
+        spec.input('structure', valid_type=StructureData,
             help='The input structure.')
         spec.input('parameters', valid_type=orm.Dict,
             help='The input parameters that are to be used to construct the input file.')
@@ -176,6 +174,15 @@ class BasePwCpInputGenerator(CalcJob):
         for key in ('pseudos', 'structure'):
             if key not in value:
                 return f'required value was not provided for the `{key}` namespace.'
+            
+        if isinstance(value['structure'], LegacyStructureData):
+            raise exceptions.InputValidationError('LegacyStructureData (orm.StructureData) is no more supported, use StructureData instead. \
+                You can pass from LegacyStructureData to StructureData using the `to_atomistic` method of the legacy.')
+            
+        if value['structure'].is_alloy or value['structure'].has_vacancies:
+            raise exceptions.InputValidationError(
+                f"The structure is an alloy or has vacancies. This is not allowed for pw.x input structures."
+            )
 
         structure_kinds = set(value['structure'].get_kind_names())
         pseudo_kinds = set(value['pseudos'].keys())
@@ -200,7 +207,7 @@ class BasePwCpInputGenerator(CalcJob):
                     return 'All elements in the `fixed_coords` setting lists must be either `True` or `False`.'
 
                 if 'structure' in value:
-                    nsites = len(value['structure'].sites)
+                    nsites = len(value['structure'].properties.sites)
 
                     if len(fixed_coords) != nsites:
                         return f'Input structure has {nsites} sites, but fixed_coords has length {len(fixed_coords)}'
@@ -306,7 +313,7 @@ class BasePwCpInputGenerator(CalcJob):
                 settings['CMDLINE'] = ['-environ']
             # To create a mapping from the species to an incremental fortran 1-based index
             # we use the alphabetical order as in the inputdata generation
-            kind_names = sorted([kind.name for kind in self.inputs.structure.kinds])
+            kind_names = sorted([kind.name for kind in self.inputs.structure.properties.kinds])
             mapping_species = {kind_name: (index + 1) for index, kind_name in enumerate(kind_names)}
 
             with folder.open(self._ENVIRON_INPUT_FILE_NAME, 'w') as handle:
@@ -478,7 +485,7 @@ class BasePwCpInputGenerator(CalcJob):
         # Specify cell parameters only if 'ibrav' is zero.
         if input_params.get('SYSTEM', {}).get('ibrav', cls._DEFAULT_IBRAV) == 0:
             cell_parameters_card = 'CELL_PARAMETERS angstrom\n'
-            for vector in structure.cell:
+            for vector in structure.properties.cell:
                 cell_parameters_card += ('{0:18.10f} {1:18.10f} {2:18.10f}\n'.format(*vector))  # pylint: disable=consider-using-f-string
         else:
             cell_parameters_card = ''
@@ -495,18 +502,16 @@ class BasePwCpInputGenerator(CalcJob):
         # I keep track of the order of species
         kind_names = []
         # I add the pseudopotential files to the list of files to be copied
-        kinds = get_kinds(structure)
-        for kind,symbol,mass in zip(kinds['kinds'], kinds['symbols'], kinds['mass']):
+        #kinds = structure.get_kinds() # NB: we assume that the inputs kinds have to be generated automatically here.
+        kinds = structure.properties.kinds # NB: we assume that the inputs kinds are already correct. 
+        symbols = structure.properties.symbols # NB: we assume that the inputs kinds are already correct. 
+        masses = structure.properties.masses # NB: we assume that the inputs kinds are already correct. 
+        for kind,symbol,mass in zip(kinds, symbols, masses):
             if kind in kind_names: 
                 continue
             # This should not give errors, I already checked before that
             # the list of keys of pseudos and kinds coincides
-            pseudo = pseudos[symbol]
-            # TOBE understood: maybe maps wrt sites and define is_alloy = site. ... 
-            #if kind.is_alloy or kind.has_vacancies:
-            #    raise exceptions.InputValidationError(
-            #        f"Kind '{kind.name}' is an alloy or has vacancies. This is not allowed for pw.x input structures."
-            #    )
+            pseudo = pseudos[kind]
 
             try:
                 # If it is the same pseudopotential file, use the same filename
@@ -538,16 +543,16 @@ class BasePwCpInputGenerator(CalcJob):
         del atomic_species_card_list
 
         # ------------ ATOMIC_POSITIONS -----------
-        coordinates = [site.position for site in structure.sites]
+        coordinates = [site.position for site in structure.properties.sites]
         if use_fractional:
             atomic_positions_card_header = 'ATOMIC_POSITIONS crystal\n'
-            coordinates = numpy.dot(coordinates, numpy.linalg.inv(numpy.array(structure.cell))).tolist()
+            coordinates = numpy.dot(coordinates, numpy.linalg.inv(numpy.array(structure.properties.cell))).tolist()
         else:
             atomic_positions_card_header = 'ATOMIC_POSITIONS angstrom\n'
 
         atomic_positions_card_list = [
             '{0} {1:18.10f} {2:18.10f} {3:18.10f}'.format(kind.ljust(6), *site_coords)  # pylint: disable=consider-using-f-string
-            for kind, site_coords in zip(kinds['kinds'], coordinates)
+            for kind, site_coords in zip(kinds, coordinates)
         ]
 
         fixed_coords = settings.pop('FIXED_COORDS', None)
@@ -568,14 +573,14 @@ class BasePwCpInputGenerator(CalcJob):
         if atomic_forces is not None:
 
             # Checking that there are as many forces defined as there are sites in the structure
-            if len(atomic_forces) != len(structure.sites):
+            if len(atomic_forces) != len(structure.properties.sites):
                 raise exceptions.InputValidationError(
-                    f'Input structure contains {len(structure.sites):d} sites, but atomic forces has length '
+                    f'Input structure contains {len(structure.properties.sites):d} sites, but atomic forces has length '
                     f'{len(atomic_forces):d}'
                 )
 
             lines = ['ATOMIC_FORCES\n']
-            for site, vector in zip(structure.sites, atomic_forces):
+            for site, vector in zip(structure.properties.sites, atomic_forces):
 
                 # Checking that all 3 dimensions are specified:
                 if len(vector) != 3:
@@ -592,14 +597,14 @@ class BasePwCpInputGenerator(CalcJob):
         if atomic_velocities is not None:
 
             # Checking that there are as many velocities defined as there are sites in the structure
-            if len(atomic_velocities) != len(structure.sites):
+            if len(atomic_velocities) != len(structure.properties.sites):
                 raise exceptions.InputValidationError(
-                    f'Input structure contains {len(structure.sites):d} sites, but atomic velocities has length '
+                    f'Input structure contains {len(structure.properties.sites):d} sites, but atomic velocities has length '
                     f'{len(atomic_velocities):d}'
                 )
 
             lines = ['ATOMIC_VELOCITIES\n']
-            for site, vector in zip(structure.sites, atomic_velocities):
+            for site, vector in zip(structure.properties.sites, atomic_velocities):
 
                 # Checking that all 3 dimensions are specified:
                 if len(vector) != 3:
@@ -627,8 +632,8 @@ class BasePwCpInputGenerator(CalcJob):
             except ValueError as exc:
                 raise QEInputValidationError(f'Cannot get structure parameters from cell: {exc}') from exc
             input_params['SYSTEM'].update(structure_parameters)
-        input_params['SYSTEM']['nat'] = len(structure.sites)
-        input_params['SYSTEM']['ntyp'] = len(structure.kinds)
+        input_params['SYSTEM']['nat'] = len(structure.properties.sites)
+        input_params['SYSTEM']['ntyp'] = len(set(structure.properties.kinds))
 
         # ============ I prepare the k-points =============
         kpoints_card = ''

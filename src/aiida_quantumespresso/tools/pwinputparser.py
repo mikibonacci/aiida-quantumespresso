@@ -45,7 +45,7 @@ class PwInputFile(StructureParseMixin, BasePwInputFile):
         if self.k_points['type'] == 'crystal':  # relative to reciprocal lattice vectors
             kpoints.set_kpoints(self.k_points['points'], weights=self.k_points['weights'])
         elif self.k_points['type'] == 'tpiba':  # Cartesian; units of 2*pi/alat
-            alat = np.linalg.norm(structure.cell[0])  # alat in Angstrom
+            alat = np.linalg.norm(structure.properties.cell[0])  # alat in Angstrom
             kpoints.set_kpoints(
                 np.array(self.k_points['points']) * (2. * np.pi / alat),
                 weights=self.k_points['weights'],

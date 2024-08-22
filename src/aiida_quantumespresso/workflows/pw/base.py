@@ -154,7 +154,7 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         meta_parameters = inputs.pop('meta_parameters')
         pseudo_family = inputs.pop('pseudo_family')
 
-        natoms = len(structure.sites)
+        natoms = len(structure.properties.sites)
 
         try:
             pseudo_set = (PseudoDojoFamily, SsspFamily, CutoffsPseudoPotentialFamily)
@@ -181,7 +181,7 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         parameters['SYSTEM']['ecutrho'] = cutoff_rho
 
         #If the structure is 2D periodic in the x-y plane, we set assume_isolate to `2D`
-        if structure.pbc == (True, True, False):
+        if structure.properties.pbc == (True, True, False):
             parameters['SYSTEM']['assume_isolated'] = '2D'
 
         if electronic_type is ElectronicType.INSULATOR:

@@ -23,7 +23,7 @@ def create_kpoints_from_distance(structure, distance, force_parity):
     kpoints.set_cell_from_structure(structure)
     kpoints.set_kpoints_mesh_from_density(distance.value, force_parity=force_parity.value)
 
-    lengths_vector = [linalg.norm(vector) for vector in structure.cell]
+    lengths_vector = [linalg.norm(vector) for vector in structure.properties.cell]
     lengths_kpoint = kpoints.get_kpoints_mesh()[0]
 
     is_symmetric_cell = all(abs(length - lengths_vector[0]) < epsilon for length in lengths_vector)

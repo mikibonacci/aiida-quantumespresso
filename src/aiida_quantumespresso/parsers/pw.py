@@ -386,11 +386,11 @@ class PwParser(BaseParser):
         parsed_data.setdefault('structure', {}).setdefault('cell', {})
 
         if 'lattice_vectors' not in parsed_data['structure']['cell']:
-            parsed_data['structure']['cell']['lattice_vectors'] = structure.cell
+            parsed_data['structure']['cell']['lattice_vectors'] = structure.properties.cell
 
         if 'atoms' not in parsed_data['structure']['cell']:
-            symbols = {s.kind_name: s.symbol for s in structure.sites}
-            parsed_data['structure']['cell']['atoms'] = [(symbols[s.kind_name], s.position) for s in structure.sites]
+            symbols = {s.kind_name: s.symbol for s in structure.properties.sites}
+            parsed_data['structure']['cell']['atoms'] = [(symbols[s.kind_name], s.position) for s in structure.properties.sites]
 
         return parsed_data, logs
 
@@ -451,13 +451,13 @@ class PwParser(BaseParser):
             positions = numpy.array(parsed_trajectory.pop('atomic_fractionals_relax'))
         else:
             # The positions were never printed, the calculation did not change the structure
-            positions = numpy.array([[site.position for site in structure.sites]])
+            positions = numpy.array([[site.position for site in structure.properties.sites]])
 
         try:
             cells = numpy.array(parsed_trajectory.pop('lattice_vectors_relax'))
         except KeyError:
             # The cell is never printed, the calculation was at fixed cell
-            cells = numpy.array([structure.cell])
+            cells = numpy.array([structure.properties.cell])
 
         # Ensure there are as many frames for cell as positions, even when the calculation was done at fixed cell
         if len(cells) == 1 and len(positions) > 1:
@@ -467,7 +467,7 @@ class PwParser(BaseParser):
             # convert positions to cartesian
             positions = numpy.einsum('ijk, ikm -> ijm', positions, cells)
 
-        symbols = [str(site.kind_name) for site in structure.sites]
+        symbols = [str(site.kind_name) for site in structure.properties.sites]
         stepids = numpy.arange(len(positions))
 
         trajectory = orm.TrajectoryData()
