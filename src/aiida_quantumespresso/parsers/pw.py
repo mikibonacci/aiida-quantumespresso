@@ -430,7 +430,7 @@ class PwParser(BaseParser):
 
         type_calc = self.node.inputs.parameters.get_dict()['CONTROL']['calculation']
 
-        if type_calc not in ['relax', 'vc-relax', 'md', 'vc-md'] or 'cell' not in list(parsed_structure.keys()):
+        if (type_calc not in ['relax', 'vc-relax', 'md', 'vc-md'] or 'cell' not in list(parsed_structure.keys())):
             return self.node.inputs.structure
 
         return convert_qe_to_aiida_structure(parsed_structure, self.node.inputs.structure)

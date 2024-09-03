@@ -19,6 +19,7 @@ from qe_tools.converters import get_parameters_from_cell
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.utils.convert import convert_input_to_namelist_entry
 from aiida_quantumespresso.utils.hubbard import HubbardUtils
+from aiida_quantumespresso.utils.magnetic import MagneticUtils
 
 from .base import CalcJob
 from .helpers import QEInputValidationError
@@ -717,6 +718,10 @@ class BasePwCpInputGenerator(CalcJob):
         # HUBBARD CARD
         hubbard_card = HubbardUtils(structure).get_hubbard_card() if isinstance(structure, HubbardStructureData) \
             else None
+        
+        # MAGNETIC CARD
+        magnetic_namelist = MagneticUtils(structure).generate_magnetic_namelist(input_params) if "magmoms" in structure.get_defined_properties() \
+            else None
 
         # =================== NAMELISTS AND CARDS ========================
         try:
@@ -746,6 +751,9 @@ class BasePwCpInputGenerator(CalcJob):
                     'namelists using the NAMELISTS inside the `settings` input node'
                 ) from exception
 
+        if magnetic_namelist is not None:
+            input_params['SYSTEM'].update(magnetic_namelist)
+        
         inputfile = ''
         for namelist_name in namelists_toprint:
             inputfile += f'&{namelist_name}\n'

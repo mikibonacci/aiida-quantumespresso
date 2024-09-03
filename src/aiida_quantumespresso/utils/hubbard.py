@@ -5,7 +5,7 @@ from itertools import product
 import os
 from typing import List, Tuple, Union
 
-from aiida.orm import StructureData
+from aiida.orm import StructureData as LegacyStructureData
 
 from aiida_quantumespresso.common.hubbard import Hubbard
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
@@ -241,15 +241,15 @@ class HubbardUtils:
 
         return indices != list(range(len(indices)))
 
-    def get_hubbard_for_supercell(self, supercell: StructureData, thr: float = 1e-3) -> HubbardStructureData:
-        """Return the ``HubbbardStructureData`` for a supercell.
+    def get_hubbard_for_supercell(self, supercell: LegacyStructureData, thr: float = 1e-3) -> HubbardStructureData:
+        """Return the ``HubbbardLegacyStructureData`` for a supercell.
 
         .. note:: the two structure need to be commensurate (no rigid rotations)
 
         .. warning:: **always check** that the energy calculation of a pristine supercell
             structure obtained through this method is the same as the unitcell (within numerical noise)
 
-        :returns: a new ``HubbbardStructureData`` with all the mapped Hubbard parameters
+        :returns: a new ``HubbbardLegacyStructureData`` with all the mapped Hubbard parameters
         """
         import numpy as np
 
@@ -351,3 +351,4 @@ def is_intersite_hubbard(hubbard: Hubbard) -> bool:
     """Return whether `Hubbard` contains intersite interactions (+V)."""
     couples = [(param.atom_index != param.neighbour_index) for param in hubbard.parameters]
     return any(couples)
+    
