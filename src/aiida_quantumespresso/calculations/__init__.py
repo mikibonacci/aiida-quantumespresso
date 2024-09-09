@@ -95,6 +95,8 @@ class BasePwCpInputGenerator(CalcJob):
     _default_verbosity = 'high'
 
     _use_kpoints = False
+    
+    _supported_properties = ["magmom"]
 
     @classproperty
     def xml_filenames(cls):
@@ -163,7 +165,11 @@ class BasePwCpInputGenerator(CalcJob):
 
     @classmethod
     def validate_inputs(cls, value, port_namespace):
-        """Validate the entire inputs namespace."""
+        """Validate the entire inputs namespace.
+        
+        Check the StructureData to contains only supported properties. The supported properties are the ones that are 
+        defined in the _supported_properties class attribute of the super class BasePwCpInputGenerator.
+        """
 
         # Wrapping processes may choose to exclude certain input ports in which case we can't validate. If the ports
         # have been excluded, and so are no longer part of the ``port_namespace``, skip the validation.
@@ -175,14 +181,21 @@ class BasePwCpInputGenerator(CalcJob):
         for key in ('pseudos', 'structure'):
             if key not in value:
                 return f'required value was not provided for the `{key}` namespace.'
-            
+        
+        # check if the structure if the atomistic `StructureData` and if contains unsupported properties
         if isinstance(value['structure'], LegacyStructureData):
-            raise exceptions.InputValidationError('LegacyStructureData (orm.StructureData) is no more supported, use StructureData instead. \
-                You can pass from LegacyStructureData to StructureData using the `to_atomistic` method of the legacy.')
-            
+            raise exceptions.InputValidationError('LegacyStructureData (orm.StructureData) is no more supported, \
+                use StructureData instead. You can convert a LegacyStructureData to a \
+                StructureData using the `to_atomistic` method of the legacy.')
+        else:
+            plugin_check = value['structure'].check_plugin_support(cls._supported_properties)
+            if len(plugin_check)>0:
+                raise NotImplementedError(f'The input structure contains one or more unsupported properties \
+                    for this process: {plugin_check}') 
+                
         if value['structure'].is_alloy or value['structure'].has_vacancies:
             raise exceptions.InputValidationError(
-                f"The structure is an alloy or has vacancies. This is not allowed for pw.x input structures."
+                "The structure is an alloy or has vacancies. This is not allowed for aiida-quantumespresso input structures."
             )
 
         structure_kinds = set(value['structure'].get_kind_names())
@@ -720,7 +733,7 @@ class BasePwCpInputGenerator(CalcJob):
             else None
         
         # MAGNETIC CARD
-        magnetic_namelist = MagneticUtils(structure).generate_magnetic_namelist(input_params) if "magmoms" in structure.get_defined_properties() \
+        magnetic_namelist = MagneticUtils(structure).generate_magnetic_namelist(input_params) if "magmoms" in structure.get_defined_properties()["computed"] \
             else None
 
         # =================== NAMELISTS AND CARDS ========================
@@ -752,6 +765,10 @@ class BasePwCpInputGenerator(CalcJob):
                 ) from exception
 
         if magnetic_namelist is not None:
+            if input_params["SYSTEM"].get("nspin", 1) == 1 and not input_params["SYSTEM"].get("noncolin", False):
+                raise exceptions.InputValidationError(
+                    "The structure has magnetic moments but the inputs are not set for a magnetic calculation (`nspin`, `noncolin`)"
+                )
             input_params['SYSTEM'].update(magnetic_namelist)
         
         inputfile = ''

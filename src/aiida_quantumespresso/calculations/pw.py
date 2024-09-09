@@ -168,6 +168,7 @@ class PwCalculation(BasePwCpInputGenerator):
         spec.exit_code(710, 'WARNING_ELECTRONIC_CONVERGENCE_NOT_REACHED',
             message='The electronic minimization cycle did not reach self-consistency, but `scf_must_converge` '
                     'is `False` and/or `electron_maxstep` is 0.')
+
         # yapf: enable
 
     @classmethod

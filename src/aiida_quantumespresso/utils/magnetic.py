@@ -24,7 +24,7 @@ class MagneticUtils:
     ):
         """Set a the `StructureData` to manipulate."""
         if isinstance(structure, StructureData):
-            if "magmoms" not in structure.get_defined_properties():
+            if "magmoms" not in structure.get_defined_properties()["computed"]:
                 raise ValueError("The input structure does not contain magnetic moments.")
             self.structure = structure
         else:

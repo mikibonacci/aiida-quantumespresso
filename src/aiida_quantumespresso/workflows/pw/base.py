@@ -298,6 +298,13 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
 
         self.ctx.inputs.kpoints = kpoints
 
+    def validate_structure(self,):
+        from aiida_atomistic.data.structure.utils import generate_striped_structure
+        plugin_check = self.inputs.pw.structure.check_plugin_support(PwCalculation._supported_properties)
+        if len(plugin_check)>0:
+            # Generate a new StructureData without the unsupported properties.
+            self.inputs.pw.structure = generate_striped_structure(self.inputs.pw.structure, orm.List(list(plugin_check)))
+    
     def set_restart_type(self, restart_type, parent_folder=None):
         """Set the restart type for the next iteration."""
 
