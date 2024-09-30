@@ -389,8 +389,8 @@ class PwParser(BaseParser):
             parsed_data['structure']['cell']['lattice_vectors'] = structure.properties.cell
 
         if 'atoms' not in parsed_data['structure']['cell']:
-            symbols = {s.kind_name: s.symbol for s in structure.properties.sites}
-            parsed_data['structure']['cell']['atoms'] = [(symbols[s.kind_name], s.position) for s in structure.properties.sites]
+            symbols = {s.kinds: s.symbols for s in structure.properties.sites}
+            parsed_data['structure']['cell']['atoms'] = [(symbols[s.kinds], s.positions) for s in structure.properties.sites]
 
         return parsed_data, logs
 
@@ -451,7 +451,7 @@ class PwParser(BaseParser):
             positions = numpy.array(parsed_trajectory.pop('atomic_fractionals_relax'))
         else:
             # The positions were never printed, the calculation did not change the structure
-            positions = numpy.array([[site.position for site in structure.properties.sites]])
+            positions = numpy.array([[site.positions for site in structure.properties.sites]])
 
         try:
             cells = numpy.array(parsed_trajectory.pop('lattice_vectors_relax'))
@@ -467,7 +467,7 @@ class PwParser(BaseParser):
             # convert positions to cartesian
             positions = numpy.einsum('ijk, ikm -> ijm', positions, cells)
 
-        symbols = [str(site.kind_name) for site in structure.properties.sites]
+        symbols = [str(site.kinds) for site in structure.properties.sites]
         stepids = numpy.arange(len(positions))
 
         trajectory = orm.TrajectoryData()

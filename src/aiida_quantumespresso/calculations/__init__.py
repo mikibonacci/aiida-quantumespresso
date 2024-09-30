@@ -8,11 +8,12 @@ from types import MappingProxyType
 import warnings
 
 from aiida import orm
-from aiida.orm import StructureData as LegacyStructureData
 from aiida.common import AttributeDict, datastructures, exceptions
 from aiida.common.lang import classproperty
 from aiida.common.warnings import AiidaDeprecationWarning
+from aiida.orm import StructureData as LegacyStructureData
 from aiida.plugins import DataFactory
+from aiida_atomistic.data.structure.hubbard_qe_utils import HubbardUtils as HubbardUtilsAtomistic  # TEMPORARY.
 import numpy
 from qe_tools.converters import get_parameters_from_cell
 
@@ -26,7 +27,8 @@ from .helpers import QEInputValidationError
 
 LegacyUpfData = DataFactory('core.upf')
 UpfData = DataFactory('pseudo.upf')
-StructureData = DataFactory("atomistic.structure")
+StructureData = DataFactory('atomistic.structure')
+
 
 class BasePwCpInputGenerator(CalcJob):
     """Base `CalcJob` for implementations for pw.x and cp.x of Quantum ESPRESSO."""
@@ -95,8 +97,8 @@ class BasePwCpInputGenerator(CalcJob):
     _default_verbosity = 'high'
 
     _use_kpoints = False
-    
-    _supported_properties = ["magmom"]
+
+    _supported_properties = ['magmoms', 'hubbard']
 
     @classproperty
     def xml_filenames(cls):
@@ -166,8 +168,8 @@ class BasePwCpInputGenerator(CalcJob):
     @classmethod
     def validate_inputs(cls, value, port_namespace):
         """Validate the entire inputs namespace.
-        
-        Check the StructureData to contains only supported properties. The supported properties are the ones that are 
+
+        Check the StructureData to contains only supported properties. The supported properties are the ones that are
         defined in the _supported_properties class attribute of the super class BasePwCpInputGenerator.
         """
 
@@ -181,24 +183,28 @@ class BasePwCpInputGenerator(CalcJob):
         for key in ('pseudos', 'structure'):
             if key not in value:
                 return f'required value was not provided for the `{key}` namespace.'
-        
+
         # check if the structure if the atomistic `StructureData` and if contains unsupported properties
         if isinstance(value['structure'], LegacyStructureData):
-            raise exceptions.InputValidationError('LegacyStructureData (orm.StructureData) is no more supported, \
+            raise exceptions.InputValidationError(
+                'LegacyStructureData (orm.StructureData) is no more supported, \
                 use StructureData instead. You can convert a LegacyStructureData to a \
-                StructureData using the `to_atomistic` method of the legacy.')
+                StructureData using the `to_atomistic` method of the legacy.'
+            )
         else:
             plugin_check = value['structure'].check_plugin_support(cls._supported_properties)
-            if len(plugin_check)>0:
-                raise NotImplementedError(f'The input structure contains one or more unsupported properties \
-                    for this process: {plugin_check}') 
-                
+            if len(plugin_check) > 0:
+                raise NotImplementedError(
+                    f'The input structure contains one or more unsupported properties \
+                    for this process: {plugin_check}'
+                )
+
         if value['structure'].is_alloy or value['structure'].has_vacancies:
             raise exceptions.InputValidationError(
-                "The structure is an alloy or has vacancies. This is not allowed for aiida-quantumespresso input structures."
+                'The structure is an alloy or has vacancies. This is not allowed for aiida-quantumespresso input structures.'
             )
 
-        structure_kinds = set(value['structure'].get_kind_names())
+        structure_kinds = set(value['structure'].properties.kinds)
         pseudo_kinds = set(value['pseudos'].keys())
 
         if structure_kinds != pseudo_kinds:
@@ -517,11 +523,11 @@ class BasePwCpInputGenerator(CalcJob):
         kind_names = []
         # I add the pseudopotential files to the list of files to be copied
         #kinds = structure.get_kinds() # NB: we assume that the inputs kinds have to be generated automatically here.
-        kinds = structure.properties.kinds # NB: we assume that the inputs kinds are already correct. 
-        symbols = structure.properties.symbols # NB: we assume that the inputs kinds are already correct. 
-        masses = structure.properties.masses # NB: we assume that the inputs kinds are already correct. 
-        for kind,symbol,mass in zip(kinds, symbols, masses):
-            if kind in kind_names: 
+        kinds = structure.properties.kinds  # NB: we assume that the inputs kinds are already correct.
+        symbols = structure.properties.symbols  # NB: we assume that the inputs kinds are already correct.
+        masses = structure.properties.masses  # NB: we assume that the inputs kinds are already correct.
+        for kind, symbol, mass in zip(kinds, symbols, masses):
+            if kind in kind_names:
                 continue
             # This should not give errors, I already checked before that
             # the list of keys of pseudos and kinds coincides
@@ -557,7 +563,7 @@ class BasePwCpInputGenerator(CalcJob):
         del atomic_species_card_list
 
         # ------------ ATOMIC_POSITIONS -----------
-        coordinates = [site.position for site in structure.properties.sites]
+        coordinates = [site.positions for site in structure.properties.sites]
         if use_fractional:
             atomic_positions_card_header = 'ATOMIC_POSITIONS crystal\n'
             coordinates = numpy.dot(coordinates, numpy.linalg.inv(numpy.array(structure.properties.cell))).tolist()
@@ -600,7 +606,7 @@ class BasePwCpInputGenerator(CalcJob):
                 if len(vector) != 3:
                     raise exceptions.InputValidationError(f'Forces({vector}) for {site} has not length three')
 
-                lines.append('{0} {1:18.10f} {2:18.10f} {3:18.10f}\n'.format(site.kind_name.ljust(6), *vector))  # pylint: disable=consider-using-f-string
+                lines.append('{0} {1:18.10f} {2:18.10f} {3:18.10f}\n'.format(site.kinds.ljust(6), *vector))  # pylint: disable=consider-using-f-string
 
             # Append to atomic_positions_card so that this card will be printed directly after
             atomic_positions_card += ''.join(lines)
@@ -624,7 +630,7 @@ class BasePwCpInputGenerator(CalcJob):
                 if len(vector) != 3:
                     raise exceptions.InputValidationError(f'Velocities({vector}) for {site} has not length three')
 
-                lines.append('{0} {1:18.10f} {2:18.10f} {3:18.10f}\n'.format(site.kind_name.ljust(6), *vector))  # pylint: disable=consider-using-f-string
+                lines.append('{0} {1:18.10f} {2:18.10f} {3:18.10f}\n'.format(site.kinds.ljust(6), *vector))  # pylint: disable=consider-using-f-string
 
             # Append to atomic_positions_card so that this card will be printed directly after
             atomic_positions_card += ''.join(lines)
@@ -731,9 +737,13 @@ class BasePwCpInputGenerator(CalcJob):
         # HUBBARD CARD
         hubbard_card = HubbardUtils(structure).get_hubbard_card() if isinstance(structure, HubbardStructureData) \
             else None
-        
+
+        # HUBBARD CARD ATOMISTIC
+        hubbard_card = HubbardUtilsAtomistic(structure).get_hubbard_card() if 'hubbard' in structure.get_defined_properties() \
+            else None
+
         # MAGNETIC CARD
-        magnetic_namelist = MagneticUtils(structure).generate_magnetic_namelist(input_params) if "magmoms" in structure.get_defined_properties()["computed"] \
+        magnetic_namelist = MagneticUtils(structure).generate_magnetic_namelist(input_params) if 'magmoms' in structure.get_defined_properties() \
             else None
 
         # =================== NAMELISTS AND CARDS ========================
@@ -765,12 +775,12 @@ class BasePwCpInputGenerator(CalcJob):
                 ) from exception
 
         if magnetic_namelist is not None:
-            if input_params["SYSTEM"].get("nspin", 1) == 1 and not input_params["SYSTEM"].get("noncolin", False):
+            if input_params['SYSTEM'].get('nspin', 1) == 1 and not input_params['SYSTEM'].get('noncolin', False):
                 raise exceptions.InputValidationError(
-                    "The structure has magnetic moments but the inputs are not set for a magnetic calculation (`nspin`, `noncolin`)"
+                    'The structure has magnetic moments but the inputs are not set for a magnetic calculation (`nspin`, `noncolin`)'
                 )
             input_params['SYSTEM'].update(magnetic_namelist)
-        
+
         inputfile = ''
         for namelist_name in namelists_toprint:
             inputfile += f'&{namelist_name}\n'
