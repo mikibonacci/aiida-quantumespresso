@@ -5,7 +5,7 @@ import re
 from aiida.plugins import DataFactory
 from aiida.orm import StructureData as LegacyStructureData
 
-from aiida_atomistic import StructureDataMutable
+from aiida_atomistic import StructureDataMutable, StructureData
 
 __all__ = ('convert_qe_time_to_sec', 'convert_qe_to_aiida_structure', 'convert_qe_to_kpoints')
 
@@ -58,12 +58,12 @@ def convert_qe_to_aiida_structure(output_dict, input_structure=None):
 
     else:
 
-        structure = input_structure.to_mutable()
+        structure = input_structure.get_value()
         structure.properties.cell = cell_dict['lattice_vectors']
         for site,position in zip(structure.properties.sites,[i[1] for i in cell_dict['atoms']]):
             site.position = position
     
-    return structure.to_immutable(detect_kinds=True) # we always recompute the kinds.
+    return StructureData.from_mutable(structure, detect_kinds=True) # we always recompute the kinds.
 
 
 def convert_qe_to_kpoints(xml_dict, structure):

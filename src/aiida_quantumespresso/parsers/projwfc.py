@@ -100,7 +100,7 @@ def find_orbitals_from_statelines(out_info_dict):
     structure = out_info_dict['structure']
     for state_dict in state_dicts:
         site_index = state_dict.pop('atomnum')
-        state_dict['position'] = structure.sites[site_index].position
+        state_dict['position'] = structure.properties.sites[site_index].position
 
     # here we set the resulting state_dicts to a new set of orbitals
     orbitals = []

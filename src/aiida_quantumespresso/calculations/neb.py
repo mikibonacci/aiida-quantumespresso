@@ -189,7 +189,7 @@ class NebCalculation(CalcJob):
             raise InputValidationError('Different cell in the fist and last image')
 
         # Check that the first and last image have the same number of sites
-        if len(first_structure.sites) != len(last_structure.sites):
+        if len(first_structure.properties.sites) != len(last_structure.properties.sites):
             raise InputValidationError('Different number of sites in the fist and last image')
 
         # Check that sites in the initial and final structure have the same kinds

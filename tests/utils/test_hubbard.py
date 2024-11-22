@@ -158,7 +158,7 @@ def test_reorder_atoms(generate_hubbard_structure, parameters, values):
     hubbard_utils = HubbardUtils(hubbard_structure=hubbard_structure)
     hubbard_utils.reorder_atoms()
 
-    sites = hubbard_utils.hubbard_structure.sites
+    sites = hubbard_utils.hubbard_structure.properties.sites
     for name, site in zip(values[0], sites):
         assert site.kind_name == name
 

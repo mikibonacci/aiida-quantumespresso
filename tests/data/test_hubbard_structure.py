@@ -40,8 +40,8 @@ def test_valid_init(generate_hubbard):
     hubbard_structure = HubbardStructureData(cell=cell, sites=sites, hubbard=hubbard)
     assert hubbard_structure.cell == cell
     assert hubbard_structure.kinds[0].symbol == sites[0][0]
-    assert hubbard_structure.sites[0].kind_name == sites[0][1]
-    assert hubbard_structure.sites[0].position == sites[0][2]
+    assert hubbard_structure.properties.sites[0].kind_name == sites[0][1]
+    assert hubbard_structure.properties.sites[0].position == sites[0][2]
     assert hubbard_structure.hubbard == hubbard
 
 
@@ -52,7 +52,7 @@ def test_from_structure(generate_structure, generate_hubbard):
     hubbard = generate_hubbard()
     hubbard_structure = HubbardStructureData.from_structure(structure=structure, hubbard=hubbard)
     assert hubbard_structure.cell == structure.cell
-    assert len(hubbard_structure.sites) == len(structure.sites)
+    assert len(hubbard_structure.properties.sites) == len(structure.properties.sites)
     assert hubbard_structure.hubbard == hubbard  # sanity check
 
     structure = generate_structure('silicon-kinds')

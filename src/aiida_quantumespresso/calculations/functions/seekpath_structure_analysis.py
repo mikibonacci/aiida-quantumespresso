@@ -50,7 +50,7 @@ def update_structure_with_hubbard(structure, orig_structure):
 
     for parameter in orig_structure.hubbard.parameters:
         hubbard_structure.initialize_onsites_hubbard(
-            atom_name=orig_structure.sites[parameter.atom_index].kind_name,
+            atom_name=orig_structure.properties.sites[parameter.atom_index].kind_name,
             atom_manifold=parameter.atom_manifold,
             value=parameter.value,
             hubbard_type=parameter.hubbard_type,

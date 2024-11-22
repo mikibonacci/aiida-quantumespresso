@@ -447,7 +447,7 @@ class XpsWorkChain(ProtocolMixin, WorkChain):
         elif atoms_list:
             builder.atoms_list = orm.List(atoms_list)
             for index in atoms_list:
-                element = structure.sites[index].kind_name
+                element = structure.properties.sites[index].kind_name
                 core_hole_pseudos[element] = pseudos[element]['core_hole']
                 gipaw_pseudos[element] = pseudos[element]['gipaw']
         # if no elements list is given, we instead initalise the pseudos dict with all

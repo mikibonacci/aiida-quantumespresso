@@ -73,7 +73,7 @@ class PwCalculationTools(CalculationTools):
             ztol=ztol,
             metadata={'store_provenance': False},
         )
-        structure_kindname_position = [(site.kind_name, site.position) for site in structure.sites]
+        structure_kindname_position = [(site.kind_name, site.position) for site in structure.properties.sites]
         allo_kindname_position = [(site.kind_name, site.position) for site in results['structure'].sites]
         structure_kindnames_sorted = sorted(structure_kindname_position, key=lambda l: l[1])
         allo_kindnames_sorted = sorted(allo_kindname_position, key=lambda l: l[1])

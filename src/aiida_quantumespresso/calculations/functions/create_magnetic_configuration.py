@@ -53,7 +53,7 @@ def create_magnetic_configuration(
         # Filter the sites and magnetic moments on the site element
         element_sites, element_magnetic_moments = zip(
             *[(site, magnetic_moment)
-              for site, magnetic_moment in zip(structure.sites, magnetic_moment_per_site)
+              for site, magnetic_moment in zip(structure.properties.sites, magnetic_moment_per_site)
               if site.kind_name.rstrip(string.digits) == element]
         )
 

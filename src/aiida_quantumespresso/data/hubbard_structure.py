@@ -83,7 +83,7 @@ class HubbardStructureData(StructureData):
         :param hubbard: :class:`~aiida_quantumespresso.common.hubbard.Hubbard` instance
         :returns: ``HubbardStructureData`` instance
         """
-        sites = [[structure.get_kind(site.kind_name).symbol, site.kind_name, site.position] for site in structure.sites]
+        sites = [[structure.get_kind(site.kind_name).symbol, site.kind_name, site.position] for site in structure.properties.sites]
         cell = structure.cell
         pbc = structure.pbc
 

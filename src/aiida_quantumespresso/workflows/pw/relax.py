@@ -381,6 +381,6 @@ class PwRelaxWorkChain(ProtocolMixin, WorkChain):
         else:
             settings = {}
 
-        settings['FIXED_COORDS'] = [[True, True, True]] * len(structure.sites)
+        settings['FIXED_COORDS'] = [[True, True, True]] * len(structure.properties.sites)
 
         return settings

@@ -46,7 +46,7 @@ class HubbardUtils:
         """Return QuantumESPRESSO `HUBBARD` input card for `pw.x`."""
         hubbard = self.hubbard_structure.hubbard
         hubbard_parameters = hubbard.parameters
-        sites = self.hubbard_structure.sites
+        sites = self.hubbard_structure.properties.sites
         natoms = len(sites)
 
         lines = [f'HUBBARD\t{hubbard.projectors}\n']
@@ -100,7 +100,7 @@ class HubbardUtils:
         :param filepath: the filepath of the *HUBBARD.dat* to parse
         """
         self.hubbard_structure.clear_hubbard_parameters()
-        natoms = len(self.hubbard_structure.sites)
+        natoms = len(self.hubbard_structure.properties.sites)
         hubbard_data = []
 
         with open(filepath, encoding='utf-8') as handle:
@@ -146,7 +146,7 @@ class HubbardUtils:
         """Return QuantumESPRESSO ``parameters.in`` data for ``pw.x```."""
         hubbard = self.hubbard_structure.hubbard
         hubbard_parameters = hubbard.parameters
-        sites = self.hubbard_structure.sites
+        sites = self.hubbard_structure.properties.sites
         natoms = len(sites)
 
         if not hubbard.formulation == 'dudarev':
@@ -184,7 +184,7 @@ class HubbardUtils:
         hubbard = structure.hubbard.model_copy()
         parameters = hubbard.to_list()
 
-        sites = structure.sites
+        sites = structure.properties.sites
         indices = get_hubbard_indices(hubbard=hubbard)
         hubbard_kinds = list(set(sites[index].kind_name for index in indices))
         hubbard_kinds.sort(reverse=False)

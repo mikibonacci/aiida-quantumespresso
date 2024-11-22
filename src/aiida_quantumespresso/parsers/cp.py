@@ -218,7 +218,7 @@ class CpParser(BaseParser):
             # get the symbols from the input
             # TODO: I should have kinds in TrajectoryData
             input_structure = self.node.inputs.structure
-            raw_trajectory['symbols'] = [str(i.kind_name) for i in input_structure.sites]
+            raw_trajectory['symbols'] = [str(i.kind_name) for i in input_structure.properties.sites]
 
             traj = TrajectoryData()
             traj.set_trajectory(

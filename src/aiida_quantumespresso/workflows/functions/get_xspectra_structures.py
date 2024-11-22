@@ -57,7 +57,7 @@ def process_molecule_input(structure, **kwargs):  # pylint: disable=too-many-sta
     x_pos = []
     y_pos = []
     z_pos = []
-    for site in structure.sites:
+    for site in structure.properties.sites:
         x_pos.append(site.position[0])
         y_pos.append(site.position[1])
         z_pos.append(site.position[2])
@@ -84,7 +84,7 @@ def process_molecule_input(structure, **kwargs):  # pylint: disable=too-many-sta
     for kind in structure.kinds:
         new_supercell.append_kind(kind)
 
-    for site in structure.sites:
+    for site in structure.properties.sites:
         new_supercell.append_site(site)
 
     # Reset the positions so that the centre of mass is at the centre of the new box
@@ -300,7 +300,7 @@ def get_xspectra_structures(structure, **kwargs):  # pylint: disable=too-many-st
 
     output_params['absorbing_elements_list'] = abs_elements_list
 
-    incoming_structure_size = len(structure.sites)
+    incoming_structure_size = len(structure.properties.sites)
     incoming_structure_cell = structure.cell
     incoming_structure_params = structure.cell_lengths
 

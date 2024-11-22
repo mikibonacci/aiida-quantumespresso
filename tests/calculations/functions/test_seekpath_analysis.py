@@ -46,13 +46,13 @@ def test_seekpath_analysis(data_regression):
         'primitive': {
             'cell': prim_structure.cell,
             'kinds': prim_structure.get_site_kindnames(),
-            'positions': [site.position for site in prim_structure.sites],
+            'positions': [site.position for site in prim_structure.properties.sites],
             'hubbard': prim_structure.hubbard.to_list(),
         },
         'conventional': {
             'cell': conv_structure.cell,
             'kinds': conv_structure.get_site_kindnames(),
-            'positions': [site.position for site in conv_structure.sites],
+            'positions': [site.position for site in conv_structure.properties.sites],
             'hubbard': conv_structure.hubbard.to_list(),
         }
     })

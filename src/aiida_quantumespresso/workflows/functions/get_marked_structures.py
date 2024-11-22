@@ -30,7 +30,7 @@ def get_marked_structures(structure, atoms_list, marker='X'):
         kinds = {kind.name: kind for kind in structure.kinds}
         marked_structure.set_cell(structure.cell)
 
-        for i, site in enumerate(structure.sites):
+        for i, site in enumerate(structure.properties.sites):
             if i == index:
                 marked_kind = Kind(name=marker, symbols=site.kind_name)
                 marked_site = Site(kind_name=marked_kind.name, position=site.position)

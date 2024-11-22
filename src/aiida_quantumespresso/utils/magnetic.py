@@ -72,7 +72,7 @@ def generate_structure_with_magmoms(input_structure=StructureData, input_magneti
     if len(input_structure.properties.sites) != len(magmoms):
         raise ValueError('The input structure and the magnetic moments must have the same length.')
 
-    mutable_structure = input_structure.to_mutable()
+    mutable_structure = input_structure.get_value()
     mutable_structure.clear_sites()
     for site, magmom in zip(input_structure.properties.sites, magmoms):
         mutable_structure.add_atom(
@@ -85,6 +85,6 @@ def generate_structure_with_magmoms(input_structure=StructureData, input_magneti
             }
         )
 
-    output_structure = mutable_structure.to_immutable(detect_kinds=True)
+    output_structure = StructureData.from_mutable(mutable_structure, detect_kinds=True)
 
     return output_structure

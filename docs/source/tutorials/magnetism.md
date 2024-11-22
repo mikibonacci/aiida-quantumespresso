@@ -158,7 +158,7 @@ What if you want to initialize the system in an anti-ferromagnetic state?
 In this case, Quantum ESPRESSO requires two different kinds to be specified in the inputs, but looking at the `sites` in the input structure:
 
 ```python
-structure.sites
+structure.properties.sites
 ```
 
 You can see that although our structure has two _sites_, they are both of the same _kind_.

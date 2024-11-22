@@ -463,10 +463,10 @@ class XspectraCrystalWorkChain(ProtocolMixin, WorkChain):
                     invalid_entries.append(site_label)
                 elif value['symbol'] not in input_elements:
                     input_elements.append(value['symbol'])
-                    if value['site_index'] < 0 or value['site_index'] >= len(structure.sites):
+                    if value['site_index'] < 0 or value['site_index'] >= len(structure.properties.sites):
                         return (
                             f'The site index for {site_label} ({value["site_index"]}) is outside the range of '
-                            + f'sites within the structure (0-{len(structure.sites) -1}).'
+                            + f'sites within the structure (0-{len(structure.properties.sites) -1}).'
                         )
 
             if len(invalid_entries) != 0:
