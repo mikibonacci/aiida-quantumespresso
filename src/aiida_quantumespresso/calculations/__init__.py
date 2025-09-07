@@ -104,7 +104,7 @@ class BasePwCpInputGenerator(CalcJob):
 
     _use_kpoints = False
 
-    supported_properties = ['magmoms', 'hubbard']
+    supported_properties = ['cell', 'pbc', 'sites', 'symbols', 'positions', 'kind_names']
 
     @classproperty
     def xml_filenames(cls):
