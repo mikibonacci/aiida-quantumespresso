@@ -81,13 +81,13 @@ def generate_structure_with_magmoms(input_structure: structures_classes, input_m
     mutable_structure = input_structure.get_value()
     mutable_structure.clear_sites()
     for site, magmom in zip(input_structure.sites, magmoms):
-        mutable_structure.add_atom(
+        mutable_structure.append_atom(
             **{
-                'positions': site.positions,
-                'symbols': site.symbols,
-                'kinds': site.kinds,
-                'weights': site.weights,
-                'magmoms': [0, 0, magmom] if isinstance(magmom, float) else magmom  # 3D vector
+                'position': site.position,
+                'symbol': site.symbol,
+                'kind': site.kind,
+                'weight': site.weight,
+                'magmom': [0, 0, magmom] if isinstance(magmom, float) else magmom  # 3D vector
             }
         )
 

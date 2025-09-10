@@ -88,7 +88,7 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
             message='Unrecognized keys were specified for `automatic_parallelization`.'
                     'This exit status has been deprecated as the automatic parallellization feature was removed.')
         spec.exit_code(300, 'ERROR_UNRECOVERABLE_FAILURE',
-            message='The calculation failed with an unidentified unrecoverable error.')
+            message='[deprecated] The calculation failed with an unidentified unrecoverable error.')
         spec.exit_code(310, 'ERROR_KNOWN_UNRECOVERABLE_FAILURE',
             message='The calculation failed with a known unrecoverable error.')
         spec.exit_code(320, 'ERROR_INITIALIZATION_CALCULATION_FAILED',
@@ -149,10 +149,7 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         if electronic_type not in [ElectronicType.METAL, ElectronicType.INSULATOR]:
             raise NotImplementedError(f'electronic type `{electronic_type}` is not supported.')
 
-        if spin_type not in [SpinType.NONE, SpinType.COLLINEAR, SpinType.NON_COLLINEAR]:
-            raise NotImplementedError(f'spin type `{spin_type}` is not supported.')
-
-        if initial_magnetic_moments is not None and spin_type not in [SpinType.COLLINEAR, SpinType.NON_COLLINEAR]:
+        if initial_magnetic_moments is not None and spin_type == SpinType.NONE:
             raise ValueError(f'`initial_magnetic_moments` is specified but spin type `{spin_type}` is incompatible.')
 
         inputs = cls.get_protocol_inputs(protocol, overrides)
@@ -160,33 +157,52 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         meta_parameters = inputs.pop('meta_parameters')
         pseudo_family = inputs.pop('pseudo_family')
 
+        if spin_type is SpinType.SPIN_ORBIT and overrides is not None and 'pseudo_family' not in overrides:
+            pseudo_family = 'PseudoDojo/0.4/PBEsol/FR/standard/upf'
+
         natoms = len(structure.sites)
-
-        try:
-            pseudo_set = (PseudoDojoFamily, SsspFamily, CutoffsPseudoPotentialFamily)
-            pseudo_family = orm.QueryBuilder().append(pseudo_set, filters={'label': pseudo_family}).one()[0]
-        except exceptions.NotExistent as exception:
-            raise ValueError(
-                f'required pseudo family `{pseudo_family}` is not installed. Please use `aiida-pseudo install` to'
-                'install it.'
-            ) from exception
-
-        try:
-            cutoff_wfc, cutoff_rho = pseudo_family.get_recommended_cutoffs(structure=structure, unit='Ry')
-            pseudos = pseudo_family.get_pseudos(structure=structure)
-        except ValueError as exception:
-            raise ValueError(
-                f'failed to obtain recommended cutoffs for pseudo family `{pseudo_family}`: {exception}'
-            ) from exception
 
         # Update the parameters based on the protocol inputs
         parameters = inputs['pw']['parameters']
+
+        if overrides and 'pseudos' in overrides.get('pw', {}):
+
+            pseudos = overrides['pw']['pseudos']
+
+            if sorted(pseudos.keys()) != sorted(structure.get_kind_names()):
+                raise ValueError(f'`pseudos` override needs one value for each of the {len(structure.kinds)} kinds.')
+
+            system_overrides = overrides['pw'].get('parameters', {}).get('SYSTEM', {})
+
+            if not all(key in system_overrides for key in ('ecutwfc', 'ecutrho')):
+                raise ValueError(
+                    'When overriding the pseudo potentials, both `ecutwfc` and `ecutrho` cutoffs should be '
+                    f'provided in the `overrides`: {overrides}'
+                )
+
+        else:
+            try:
+                pseudo_set = (PseudoDojoFamily, SsspFamily, CutoffsPseudoPotentialFamily)
+                pseudo_family = orm.QueryBuilder().append(pseudo_set, filters={'label': pseudo_family}).one()[0]
+            except exceptions.NotExistent as exception:
+                raise ValueError(
+                    f'required pseudo family `{pseudo_family}` is not installed. Please use `aiida-pseudo install` to'
+                    'install it.'
+                ) from exception
+
+            try:
+                parameters['SYSTEM']['ecutwfc'], parameters['SYSTEM'][
+                    'ecutrho'] = pseudo_family.get_recommended_cutoffs(structure=structure, unit='Ry')
+                pseudos = pseudo_family.get_pseudos(structure=structure)
+            except ValueError as exception:
+                raise ValueError(
+                    f'failed to obtain recommended cutoffs for pseudo family `{pseudo_family}`: {exception}'
+                ) from exception
+
         parameters['CONTROL']['etot_conv_thr'] = natoms * meta_parameters['etot_conv_thr_per_atom']
         parameters['ELECTRONS']['conv_thr'] = natoms * meta_parameters['conv_thr_per_atom']
-        parameters['SYSTEM']['ecutwfc'] = cutoff_wfc
-        parameters['SYSTEM']['ecutrho'] = cutoff_rho
 
-        #If the structure is 2D periodic in the x-y plane, we set assume_isolate to `2D`
+        # If the structure is 2D periodic in the x-y plane, we set assume_isolate to `2D`
         if structure.pbc == (True, True, False):
             parameters['SYSTEM']['assume_isolated'] = '2D'
 
@@ -197,20 +213,22 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
 
         magnetization = get_magnetization(
             structure=structure,
-            pseudo_family=pseudo_family,
+            z_valences={kind.name: pseudos[kind.name].z_valence for kind in structure.kinds},
             initial_magnetic_moments=initial_magnetic_moments,
-            spin_type=spin_type
+            spin_type=spin_type,
         )
         if spin_type is SpinType.COLLINEAR:
             parameters['SYSTEM']['starting_magnetization'] = magnetization['starting_magnetization']
             parameters['SYSTEM']['nspin'] = 2
 
-        if spin_type is SpinType.NON_COLLINEAR:
+        if spin_type in [SpinType.SPIN_ORBIT, SpinType.NON_COLLINEAR]:
             parameters['SYSTEM']['starting_magnetization'] = magnetization['starting_magnetization']
             parameters['SYSTEM']['angle1'] = magnetization['angle1']
             parameters['SYSTEM']['angle2'] = magnetization['angle2']
             parameters['SYSTEM']['noncolin'] = True
             parameters['SYSTEM']['nspin'] = 4
+            if spin_type == SpinType.SPIN_ORBIT:
+                parameters['SYSTEM']['lspinorb'] = True
 
         # If overrides are provided, they are considered absolute
         if overrides:
@@ -220,9 +238,6 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
             # if tot_magnetization in overrides , remove starting_magnetization from parameters
             if parameters.get('SYSTEM', {}).get('tot_magnetization') is not None:
                 parameters.setdefault('SYSTEM', {}).pop('starting_magnetization', None)
-
-            pseudos_overrides = overrides.get('pw', {}).get('pseudos', {})
-            pseudos = recursive_merge(pseudos, pseudos_overrides)
 
         metadata = inputs['pw']['metadata']
 
@@ -313,12 +328,12 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         """
         if HAS_ATOMISTIC:
             # do we want to do this, or return a warning, or except?
-            from aiida_atomistic.data.structure.utils import generate_striped_structure  # pylint: disable=import-error
-            plugin_check = self.inputs.pw.structure.check_plugin_support(PwCalculation.supported_properties)
+            from aiida_atomistic.data.structure.utils import check_plugin_support  # pylint: disable=import-error
+            plugin_check = check_plugin_support(self.inputs.pw.structure, PwCalculation.supported_properties)
             if len(plugin_check) > 0:
-                # Generate a new StructureData without the unsupported properties.
-                self.inputs.pw.structure = generate_striped_structure(
-                    self.inputs.pw.structure, orm.List(list(plugin_check))
+                raise NotImplementedError(
+                    f'The input structure has properties that are not supported by the PwCalculation plugin: '
+                    f'{plugin_check}. Please remove these properties or use a StructureData without them.'
                 )
 
     def set_restart_type(self, restart_type, parent_folder=None):
@@ -420,13 +435,6 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
             )
 
             return ProcessHandlerReport(True)
-
-    @process_handler(priority=600)
-    def handle_unrecoverable_failure(self, calculation):
-        """Handle calculations with an exit status below 400 which are unrecoverable, so abort the work chain."""
-        if calculation.is_failed and calculation.exit_status < 400:
-            self.report_error_handled(calculation, 'unrecoverable error, aborting...')
-            return ProcessHandlerReport(True, self.exit_codes.ERROR_UNRECOVERABLE_FAILURE)
 
     @process_handler(priority=590, exit_codes=[])
     def handle_known_unrecoverable_failure(self, calculation):

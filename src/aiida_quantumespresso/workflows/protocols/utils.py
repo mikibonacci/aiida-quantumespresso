@@ -160,6 +160,7 @@ def get_magnetization(
         'angle1': {} if spin_type in [SpinType.NON_COLLINEAR, SpinType.SPIN_ORBIT] else None,
         'angle2': {} if spin_type in [SpinType.NON_COLLINEAR, SpinType.SPIN_ORBIT] else None,
     }
+
     if sorted(z_valences.keys()) != sorted(structure.get_kind_names()):
         raise ValueError(f'`z_valences` needs one value for each of the {len(structure.kinds)} kinds.')
 

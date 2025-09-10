@@ -104,7 +104,9 @@ class BasePwCpInputGenerator(CalcJob):
 
     _use_kpoints = False
 
-    supported_properties = ['cell', 'pbc', 'sites', 'symbols', 'positions', 'kind_names']
+    supported_properties = [
+        'cell', 'pbc', 'sites', 'symbols', 'positions', 'kind_names', 'masses', 'weights', 'hubbard', 'tot_charge'
+    ]
 
     @classproperty
     def xml_filenames(cls):
@@ -182,7 +184,8 @@ class BasePwCpInputGenerator(CalcJob):
 
         if not isinstance(value['structure'], LegacyStructureData):
             # we have the atomistic StructureData, so we need to check if all the defined properties are supported
-            plugin_check = value['structure'].check_plugin_support(cls.supported_properties)
+            from aiida_atomistic.data.structure.utils import check_plugin_support
+            plugin_check = check_plugin_support(value['structure'], cls.supported_properties)
             if len(plugin_check) > 0:
                 raise NotImplementedError(
                     f'The input structure contains one or more unsupported properties \
@@ -736,17 +739,17 @@ class BasePwCpInputGenerator(CalcJob):
             kpoints_card = ''.join(kpoints_card_list)
             del kpoints_card_list
 
-        # HUBBARD CARD and MAGNETIC NAMELIST
+        # HUBBARD CARD and tot_charge
         hubbard_card = None
-        magnetic_namelist = None
         if isinstance(structure, HubbardStructureData):
             hubbard_card = HubbardUtils(structure).get_hubbard_card()
         elif len(structures_classes) == 2 and not isinstance(structure, LegacyStructureData):
             # this means that we have the atomistic StructureData.
             hubbard_card = HubbardUtils(structure).get_hubbard_card() if 'hubbard' \
                 in structure.get_defined_properties() else None
-            magnetic_namelist = MagneticUtils(structure).generate_magnetic_namelist(input_params) if 'magmoms' in \
-                structure.get_defined_properties()  else None
+            if 'tot_charge' in structure.get_defined_properties():
+                tot_charge = structure.get_property('tot_charge')
+                input_params['SYSTEM']['tot_charge'] = tot_charge
 
         # =================== NAMELISTS AND CARDS ========================
         try:
@@ -775,14 +778,6 @@ class BasePwCpInputGenerator(CalcJob):
                     'Unknown `calculation` value in CONTROL namelist {calculation_type}. Otherwise, specify the list of'
                     'namelists using the NAMELISTS inside the `settings` input node'
                 ) from exception
-
-        if magnetic_namelist is not None:
-            if input_params['SYSTEM'].get('nspin', 1) == 1 and not input_params['SYSTEM'].get('noncolin', False):
-                raise exceptions.InputValidationError(
-                    'The structure has magnetic moments but the inputs are not set for \
-                    a magnetic calculation (`nspin`, `noncolin`)'
-                )
-            input_params['SYSTEM'].update(magnetic_namelist)
 
         inputfile = ''
         for namelist_name in namelists_toprint:
